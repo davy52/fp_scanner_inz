@@ -4,5 +4,8 @@
 .vscode/launch.json
 .vscode/ipch
 .vscode/*
-
+.gitignore
+.*/CMakeLists.txt
+platformio.ini
+sdkconfig.*
 fwNS22_DawidKliminski.c
