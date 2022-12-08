@@ -1,10 +1,39 @@
 #include "r503_uart.h"
+#include <string.h>
 
 
 // functions
 
+int __r503_write_frame(__r503_uart_frame frame)
+{
+	uint8_t data[48] = {
+		frame.header >> 8,
+		frame.header,
+		frame.adder >> 24,
+		frame.adder >> 16,
+		frame.adder >> 8,
+		frame.adder,
+		frame.pid,
+		frame.len >> 8,
+		frame.len,
+		0,
+	};
+	for(int i = 0; i < frame.len - 2; i++){
+		data[i+9] = frame.data[i];
+	}
+	data[9 + frame.len - 1] = frame.sum >> 8;
+	data[9 + frame.len] = frame.sum;
 
-
+	return __r503_write(data, 9 + frame.len);
+}
+// TODO: GLOBAL read and write buffers
+int __r503_read_frame(__r503_uart_frame* frame)
+{
+	uint8_t data[256];
+	__r503_read(data, 9 + frame->len);
+	memcpy(frame, data, 9 + frame->len);
+	return 0;
+}
 
 // helper functions 
 uint16_t __r503_gen_sum(__r503_uart_frame frame)
@@ -35,7 +64,7 @@ int __r503_check_sum(__r503_uart_frame frame)
 
 }
 
-__r503_uart_frame __r503_gen_frame(uint32_t adder, uint8_t pid, uint16_t len, uint8_t* data)
+__r503_uart_frame r503_gen_frame(uint32_t adder, uint8_t pid, uint16_t len, uint8_t* data)
 {
 	__r503_uart_frame frame = {0};
 	frame.header = R503_HEADER;
@@ -63,7 +92,7 @@ __r503_confirm_code r503_verify_pwd(uint32_t adder, uint32_t pwd)
 		(uint8_t)(pwd >> 0)
 	};
 
-	__r503_uart_frame frame = __r503_gen_frame(adder, PID_CMD, 0x07, data);
+	__r503_uart_frame frame = r503_gen_frame(adder, PID_CMD, 0x07, data);
 
 	uint8_t frameData[16];
 
@@ -72,7 +101,7 @@ __r503_confirm_code r503_verify_pwd(uint32_t adder, uint32_t pwd)
 	}
 
 	__r503_uart_frame rcvFrame;
-	uint8_t rcvData;
+	uint8_t rcvData[256];
 	rcvFrame.data = &rcvData;
 	rcvFrame.len = 0x03;
 
@@ -93,7 +122,7 @@ __r503_confirm_code r503_set_pass(uint32_t adder, uint32_t pwd)
 		(uint8_t)(pwd >> 0)
 	};
 
-	__r503_uart_frame frame = __r503_gen_frame(adder, PID_CMD, 0x07, data);
+	__r503_uart_frame frame = r503_gen_frame(adder, PID_CMD, 0x07, data);
 
 	if(__r503_write_frame(frame)){
 		return FAIL_TO_WRITE;
@@ -118,7 +147,7 @@ __r503_confirm_code r503_set_adder(uint32_t adder, uint32_t new_adder)
 		(uint8_t)(new_adder >> 0)
 	};
 
-	__r503_uart_frame frame = __r503_gen_frame(adder, PID_CMD, 0x07, data);
+	__r503_uart_frame frame = r503_gen_frame(adder, PID_CMD, 0x07, data);
 
 	if(__r503_write_frame(frame)){
 		return FAIL_TO_WRITE;
@@ -213,11 +242,8 @@ __r503_confirm_code r503_read_sys_param(uint32_t adder, r503_system_settings* se
 	return frame.data[0];
 }
 
-__r503_confirm_code r503_read_template_num(uint32_t adder, uint16_t templN)
-{
-// TODO:
-}
-
+/*
+__r503_confirm_code r503_read_template_num(uint32_t adder, uint16_t templN);
 __r503_confirm_code __r503_collect_finger_image(uint32_t adder);
 __r503_confirm_code __r503_upload_image(uint32_t adder, uint8_t* data, uint16_t* len);
 __r503_confirm_code r503_read_finger_image(uint32_t adder, uint8_t* data, uint16_t* len);
@@ -252,3 +278,4 @@ __r503_confirm_code __r503_write_notepad(uint32_t adder, uint8_t pageID, __r503_
 __r503_confirm_code __r503_read_notepad(uint32_t adder, uint8_t pageID, __r503_notepad_content* notepadContent);
 
 
+*/
