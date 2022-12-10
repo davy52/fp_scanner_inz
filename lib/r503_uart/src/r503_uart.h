@@ -13,33 +13,47 @@
  * 
  */
 typedef enum {
-	CMD_EXEC_COMPLETE = 0x01,					// succes!
-	FAIL_TO_RCV,								// fail recieving packet
-	NO_FINGER,									// no finger on scanner
-	FAIL_TO_ENROLL_FINGER,						// ?
-	FAIL_TO_GEN_FILE_DISORDERLY_FINGER_IMAGE,	// fail to gen over-disorderly fingerprint img
-	FAIL_TO_GEN_FILE_LACK_OR_SMALL,				// fail to gen lack of char. point or small image
-	NO_MATCH,									// no match
-	FAIL_TO_FIND_MATCH,							// fail ot match matching finger in library
-	PAGE_ID_OVER_LIB_SIZE,						// pageID beyond finger library
-	FAIL_TO_READ_TEMPLATE_OR_TEMP_INVALID,		// error reading template from library or template is invalid
-	FAIL_TO_UPLOAD_TEMPLATE,					// error uploading template
-	CANT_RECIEVE,								// module can't receive the following data packages
-	FAIL_TO_UPLOAD_IMAGE,						// error uploading image
-	FAIL_TO_DELETE_TEMPLATE,					// fail to delete the template
-	FAIL_TO_CLEAR_FINGER_LIBRARY,				// fail to clear finger library
-	WRONG_PASS,									// wrong password
-	FAIL_TO_GEN_IMG_LACK_OF_VALID_PRIMMARY_IMG,	// fail to generate the image lack of valid primary image
-	FAIL_TO_WRITE_FLASH,						// error writing flash
-	NO_DEF_ERROR,								// no definition error
-	REGISTER_NUMBER_INVALID,					// invalid register number
-	INCORRECT_REGISTER_CONFIG,					// incorrect configuration of register
-	WRONG_NOTEPAD_PAGE_NUMBER,					// wrong notepad page number
-	FAIL_TO_OPERATE_COMM_PORT,					// fail to operate the communication port
+	CMD_EXEC_COMPLETE = 0x00,							// succes!
+	FAIL_TO_RCV,										// fail recieving packet
+	NO_FINGER,											// no finger on scanner
+	FAIL_TO_ENROLL_FINGER,								// or unsyccessful entry?
+	FAIL_TO_GEN_FILE_DISORDERLY_FINGER_IMAGE = 0x06,	// fail to gen over-disorderly fingerprint img
+	FAIL_TO_GEN_FILE_LACK_OR_SMALL,						// fail to gen lack of char. point or small image
+	NO_MATCH,											// no match
+	FAIL_TO_FIND_MATCH,									// fail ot match matching finger in library
+	PAGE_ID_OVER_LIB_SIZE,								// pageID beyond finger library
+	FAIL_TO_READ_TEMPLATE_OR_TEMP_INVALID,				// error reading template from library or template is invalid
+	FAIL_TO_UPLOAD_TEMPLATE,							// error uploading template
+	CANT_RECIEVE,										// module can't receive the following data packages
+	FAIL_TO_UPLOAD_IMAGE,								// error uploading image
+	FAIL_TO_DELETE_TEMPLATE,							// fail to delete the template
+	FAIL_TO_CLEAR_FINGER_LIBRARY,						// fail to clear finger library
+	WRONG_PASS = 0x13,									// wrong password
+	FAIL_TO_GEN_IMG_LACK_OF_VALID_PRIMMARY_IMG = 0x15,	// fail to generate the image lack of valid primary image
+	FAIL_TO_WRITE_FLASH = 0x18,							// error writing flash
+	NO_DEF_ERROR,										// no definition error
+	ADDRESS_CODE_INCORRECT = 0x20,						// 
+	PASSWD_MUST_BE_VERIFIED = 0x21,						//
+	FP_TEMPLATE_EMPTY,									//
+	FP_LIB_EMPY = 0x24,									//
+	TIMEOUT = 0x26,										//
+	FP_ALREADY_EXIST,									//
+	SENS_HW_ERROR = 0x29,								//
+	REGISTER_NUMBER_INVALID = 0x1A,						// invalid register number
+	INCORRECT_REGISTER_CONFIG = 0x1B,					// incorrect configuration of register
+	WRONG_NOTEPAD_PAGE_NUMBER = 0x1C,					// wrong notepad page number
+	FAIL_TO_OPERATE_COMM_PORT = 0x1D,					// fail to operate the communication port
+	FP_LIB_FULL = 0x1F,
+	CMD_ERROR = 0xFC,									// unsupported command
+	HW_ERROR = 0xFD,									// hardware error
+	FAIL_TO_EXEC_CMD = 0xFE,
 
+	HANDSHAKE_BOOT_GOOD = 0x55,							// proper boot occured
+	
 	//custom
-	FAIL_TO_WRITE = 0xFE,
-	FAIL_TO_READ = 0xFF
+	INCORRECT_RCV_SUM = 0x1FD,							// bad sum on recieved frame
+	FAIL_TO_WRITE = 0x1FE,
+	FAIL_TO_READ = 0x1FF
 } __r503_confirm_code;
 
 typedef enum {
@@ -53,8 +67,12 @@ typedef enum {
 
 typedef enum {
 	AURA_RED = 0x01,
-	AURA_BLUE, 
-	AURA_PURPLE,
+	AURA_BLUE = 0x02, 
+	AURA_PURPLE = 0x03,	// still red
+	AURA_GREEN = 0x04,	// green
+	AURA_YELLOW = 0x05,
+	AURA_CYAN = 0x06,		
+	AURA_WHITE = 0x07	// yellow
 } __r503_aura_color_index;
 
 // Packet indentifier
@@ -78,7 +96,7 @@ typedef struct {
 	uint16_t len;
 	uint8_t* data;
 	uint16_t sum;
-} __r503_uart_frame;
+} __attribute__((__packed__)) __r503_uart_frame;
 
 typedef struct {
 	uint16_t status;
@@ -113,7 +131,7 @@ typedef struct {
 
 
 // functions
-int r503_init(uint32_t adder);
+// int r503_init(uint32_t adder);
 
 
 // base write and receive functions to be implemented by user
@@ -136,7 +154,21 @@ int __r503_write(uint8_t* data, uint16_t len);
  */
 int __r503_read(uint8_t* data, uint16_t len);
 
+/**
+ * @brief interface to write frame using __r503_uart_frame struct 
+ * 
+ * @param frame	frame to be written 
+ * @return int 	0:good -1:error 
+ */
 int __r503_write_frame(__r503_uart_frame frame);
+
+/**
+ * @brief interface to read frame using __r503_uart_frame struct
+ * 
+ * @param frame struct to be read into IMPORTANT fame.data pointer has to be 
+ * 				prepared	TODO: better word instead of prepared :D
+ * @return int 
+ */
 int __r503_read_frame(__r503_uart_frame* frame);
 
 // helper functions 
@@ -147,7 +179,7 @@ int __r503_read_frame(__r503_uart_frame* frame);
  * @param frame __r503_uart_frame
  * @return uint16_t sum
  */
-uint16_t __r503_gen_sum(__r503_uart_frame frame);
+uint16_t __r503_gen_sum(__r503_uart_frame *frame);
 
 /**
  * @brief check if sum of frame is good 
@@ -395,12 +427,20 @@ __r503_confirm_code __r503_search(uint32_t adder, uint8_t bufferID, uint16_t sta
 __r503_confirm_code __r503_cancel(uint32_t adder);
 
 /**
+ * @brief	read handshake response (used to check if r504 turned on properly) 
+ * 
+ * @param adder address of r503 
+ * @return __r503_configrm_code 
+ */
+__r503_confirm_code r503_read_handshake(uint32_t adder);
+
+/**
  * @brief send handshake
  * 
  * @param adder module address
  * @return __r503_confirm_code 
  */
-__r503_confirm_code __r503_handshake(uint32_t adder);
+__r503_confirm_code r503_handshake(uint32_t adder);
 
 /**
  * @brief check if sensor is normal
