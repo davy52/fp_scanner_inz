@@ -32,6 +32,7 @@ typedef enum {
 	FAIL_TO_GEN_IMG_LACK_OF_VALID_PRIMMARY_IMG = 0x15,	// fail to generate the image lack of valid primary image
 	FAIL_TO_WRITE_FLASH = 0x18,							// error writing flash
 	NO_DEF_ERROR,										// no definition error
+	ID_OUT_OF_RANGE = 0x0B,								// fingerprint library full
 	ADDRESS_CODE_INCORRECT = 0x20,						// 
 	PASSWD_MUST_BE_VERIFIED = 0x21,						//
 	FP_TEMPLATE_EMPTY,									//
@@ -53,7 +54,8 @@ typedef enum {
 	//custom
 	INCORRECT_RCV_SUM = 0x1FD,							// bad sum on recieved frame
 	FAIL_TO_WRITE = 0x1FE,
-	FAIL_TO_READ = 0x1FF
+	FAIL_TO_READ = 0x1FF,
+	FUNCTION_NOT_IMPLEMENTED = 0xFFF					// function not yet implemented
 } __r503_confirm_code;
 
 typedef enum {
@@ -293,12 +295,35 @@ __r503_confirm_code r503_control(uint32_t adder, uint8_t state);
 __r503_confirm_code r503_read_template_index_table(uint32_t adder, uint8_t pageID, __r503_index_page page);
 
 /**
- * @brief detect finger and store image in ImageBuffer
+ * @brief 	detect finger and store image in ImageBuffer
+ * 			any image quality will be a succesful collection
  * 
  * @param adder module address
  * @return __r503_confirm_code 
  */
 __r503_confirm_code __r503_collect_finger_image(uint32_t adder);
+
+/**
+ * @brief	detect finger and store image in Image Buffer return
+ * 			can return bad quality 
+ * 
+ * @param adder module address
+ * @return __r503_confirm_code 
+ */
+__r503_confirm_code __r503_collect_finger_image_EX(uint32_t adder);
+
+/**
+ * @brief	auto collect 6 images and generate template 
+ * 	
+ * @param modelID fingerprint library location number if 0xC8 - 0xFF : auto fill
+ * @param adder module address
+ * @param allow_cover_id allow to cover ID number
+ * @param allow_dup_finger allow to register duplicate fingerprints
+ * @param return_critical return critical step status during registration
+ * @param finger_req_leave require finger to leave sensor between collections
+ * @return __r503_confirm_code 
+ */
+__r503_confirm_code __r503_auto_enroll(uint32_t adder, uint8_t modelID, uint8_t allow_cover_id, uint8_t allow_dup_finger, uint8_t return_critical, uint8_t finger_req_leave);
 
 /**
  * @brief download image from master to ImageBuffer

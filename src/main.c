@@ -24,8 +24,11 @@
 #define TX 16
 #define RX 17
 #define WAKEUP_PIN 18
+#define BUTTON_PIN 14
 
-#define READ_TIMEOUT 100
+#define READ_TIMEOUT 5000
+
+int button_flag = 0;
 
 // r503 setup
 uint32_t r503_adder = 0xFAFAFAFA;
@@ -65,23 +68,40 @@ int __r503_write(uint8_t* data, uint16_t len)
 	//ESP_LOGE("WIRE", "code %u", data[9]);
 	int ret = uart_write_bytes(uart_num, data, len);
 	//vTaskDelay(10/portTICK_PERIOD_MS);
-	uart_flush_input(uart_num);
+	//uart_flush_input(uart_num);
 	return ret;
 }
 
-int __r503_read(uint8_t* data, uint16_t len)
-{
-	static const char* TAG = "[READ]";
-	//ESP_LOGI(TAG, "READ FRAME");
-	//ESP_LOGI(TAG, "data*: %p \tlen: %d", data, len);
+ int __r503_read(uint8_t* data, uint16_t len)
+ {
+	static const char* TAG= "[READ]";
 
 	int ret = uart_read_bytes(uart_num, data, len, READ_TIMEOUT/portTICK_PERIOD_MS);
-	// for(int i = 0; i < len; i++){
-	// 	ESP_LOGI(TAG, "BYTE %d : \t%X", i, data[i]);
-	// }
-	// ESP_LOGI(TAG, "RET=%X", ret);
 	return ret;
-}
+ }
+// {
+// 	static const char* TAG = "[READ]";
+// 	//ESP_LOGI(TAG, "READ FRAME");
+// 	//ESP_LOGI(TAG, "data*: %p \tlen: %d", data, len);
+// 	int ret = 0;
+// 	do
+// 	{
+// 		ret = uart_read_bytes(uart_num, data, 1, READ_TIMEOUT/portTICK_PERIOD_MS);
+// 		ESP_LOGW(TAG, "data: %X", data[0]);
+// 	} while (data[0] == 0xFF);	//random 0xFF
+	
+// 	if(len > 1){
+// 		ESP_LOGI(TAG, "data longer");
+// 		ret = uart_read_bytes(uart_num, data + 1, len - 1, READ_TIMEOUT/portTICK_PERIOD_MS);
+// 		ret++;
+// 	}
+// 	ESP_LOGW(TAG, "READ WHOLE MESSAGE");
+// 	// ESP_LOGW(TAG, "DATA:");
+// 	// for(int i = 0; i < len; i++){
+// 	// 	ESP_LOGW(TAG, "DATA%d: %X", i, data[i]);
+// 	// }
+// 	return ret;
+// }
 
 // mask bit pos: 1-baudrate 2-data_len 3-sec_level
 int r503_check_params(r503_system_settings params1, r503_system_settings params2, uint8_t check_mask)
@@ -111,10 +131,10 @@ int r503_init(uint32_t adder)
 	__r503_confirm_code ret_code = 0;
 
 	vTaskDelay(500/portTICK_PERIOD_MS);
-	uart_flush_input(uart_num);
+	//uart_flush_input(uart_num);
 	ESP_ERROR_CHECK(gpio_set_level(R503_POWER, 1));
-	vTaskDelay(15/portTICK_PERIOD_MS);
-	uart_flush_input(uart_num);
+	//vTaskDelay(15/portTICK_PERIOD_MS);
+	//uart_flush_input(uart_num);
 
 	ESP_LOGW(TAG, "Reading boot handshake");
 	ret_code = r503_read_handshake(R503_DEF_ADDER);
@@ -188,8 +208,8 @@ int r503_init(uint32_t adder)
 		return -1;
 	}
 
-	ESP_ERROR_CHECK(gpio_set_intr_type(WAKEUP_PIN, GPIO_INTR_NEGEDGE));
-	ESP_ERROR_CHECK(gpio_intr_enable(WAKEUP_PIN));
+	// ESP_ERROR_CHECK(gpio_set_intr_type(WAKEUP_PIN, GPIO_INTR_NEGEDGE));
+	// ESP_ERROR_CHECK(gpio_intr_enable(WAKEUP_PIN));
 
 	// gpio_set_level(R503_POWER, 0);
 	
@@ -199,49 +219,58 @@ int r503_init(uint32_t adder)
 void r503_pin_init(){
 	static const char*  TAG = "R503 PIN INIT";
 
-	// gpio_config_t conf = {
-	// 	.pin_bit_mask = BIT(R503_POWER),
-	// 	.mode = GPIO_MODE_OUTPUT,
-	// 	.pull_up_en = GPIO_PULLUP_DISABLE,
-	// 	.pull_down_en = GPIO_PULLDOWN_DISABLE,
-	// 	.intr_type = GPIO_INTR_DISABLE
-	// };
-	gpio_reset_pin(R503_POWER);
-	gpio_set_intr_type(R503_POWER, GPIO_INTR_DISABLE);
-	gpio_intr_disable(R503_POWER);
-	gpio_set_direction(R503_POWER, GPIO_MODE_OUTPUT);
-	gpio_set_pull_mode(R503_POWER, GPIO_FLOATING);
-	gpio_set_level(R503_POWER, 0);
+	gpio_config_t conf = {
+		.pin_bit_mask = BIT(R503_POWER),
+		.mode = GPIO_MODE_OUTPUT,
+		.pull_up_en = GPIO_PULLUP_DISABLE,
+		.pull_down_en = GPIO_PULLDOWN_DISABLE,
+		.intr_type = GPIO_INTR_DISABLE
+	};
+	gpio_config(&conf);
+
+	// gpio_reset_pin(R503_POWER);
+	// gpio_set_intr_type(R503_POWER, GPIO_INTR_DISABLE);
+	// gpio_intr_disable(R503_POWER);
+	// gpio_set_direction(R503_POWER, GPIO_MODE_OUTPUT);
+	// gpio_set_pull_mode(R503_POWER, GPIO_FLOATING);
+	// gpio_set_level(R503_POWER, 0);
 
 
 	
 
-	// gpio_config_t conf2 = {
-	// 	.pin_bit_mask = BIT(WAKEUP_PIN),
-	// 	.mode = GPIO_MODE_INPUT,
-	// 	.pull_up_en = GPIO_PULLUP_DISABLE,
-	// 	.pull_down_en = GPIO_PULLDOWN_ENABLE,
-	// 	.intr_type = GPIO_INTR_DISABLE,
-	// };
+	
+	conf.pin_bit_mask = BIT(WAKEUP_PIN);
+	conf.mode = GPIO_MODE_INPUT;
+	conf.pull_up_en = GPIO_PULLUP_DISABLE;
+	conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
+	conf.intr_type = GPIO_PIN_INTR_NEGEDGE;
+	gpio_config(&conf);
 
-	gpio_reset_pin(WAKEUP_PIN);
-	gpio_set_intr_type(WAKEUP_PIN, GPIO_INTR_NEGEDGE);
-	gpio_intr_enable(WAKEUP_PIN);
-	gpio_set_direction(WAKEUP_PIN, GPIO_MODE_INPUT);
-	gpio_set_pull_mode(WAKEUP_PIN, GPIO_FLOATING);
+	// gpio_reset_pin(WAKEUP_PIN);
+	// gpio_set_intr_type(WAKEUP_PIN, GPIO_INTR_NEGEDGE);
+	// gpio_intr_enable(WAKEUP_PIN);
+	// gpio_set_direction(WAKEUP_PIN, GPIO_MODE_INPUT);
+	// gpio_set_pull_mode(WAKEUP_PIN, GPIO_FLOATING);
 	
 
-	// gpio_reset_pin(RX);
-	// gpio_set_intr_type(RX, GPIO_INTR_DISABLE);
-	// gpio_intr_enable(RX);
-	// gpio_set_direction(RX, GPIO_MODE_INPUT);
-	// gpio_set_pull_mode(RX, GPIO_FLOATING);
-
+	conf.pin_bit_mask = BIT(BUTTON_PIN);
+	conf.mode = GPIO_MODE_INPUT;
+	conf.pull_up_en = GPIO_PULLUP_ENABLE;
+	conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
+	conf.intr_type = GPIO_PIN_INTR_NEGEDGE;
+	gpio_config(&conf);
 }
 
 static void IRAM_ATTR wakeup_isr(void *args)
 {
 	int pin = (int)args;
+	if(pin == BUTTON_PIN){
+		if(button_flag == 0){
+			button_flag = 1;
+		}else{
+			return;
+		}
+	}
 	xQueueSendFromISR(intrQ, &pin, NULL);
 }
 
@@ -260,25 +289,55 @@ void main_task(void *params)
 	while(1){
 		ESP_LOGW(TAG, "LOOP");
 		if (xQueueReceive(intrQ, &flag, portMAX_DELAY)){
-			ESP_LOGI(TAG, "FINGER!!!");
+			switch (flag)
+			{
+			case WAKEUP_PIN:
+				ESP_LOGI(TAG, "FINGER!!!");
+				
+				// ESP_LOGE(TAG, "aura");
+				__r503_set_aura_led_config(r503_adder, BREATHING_LIGHT, 0x0f, AURA_GREEN, 5);
+				vTaskDelay(300*5/portTICK_PERIOD_MS);
+				// ESP_LOGE(TAG, "aura2");
+				__r503_set_aura_led_config(r503_adder, LIGHT_ON, 0, color, 0);
+				ESP_LOGE(TAG, "continue \t|color: %X", color);
+				color++;
+				if(color > 0x07)
+					color = 0x01;
+				xQueueReset(intrQ);
+				break;
 
-
-			// gpio_set_level(R503_POWER, 1);
-			// uart_flush_input(uart_num);
-
-			//if(r503_read_handshake(r503_adder) != HANDSHAKE_BOOT_GOOD)
-			//	continue;
-			
-			ESP_LOGE(TAG, "aura");
-			__r503_set_aura_led_config(r503_adder, BREATHING_LIGHT, 0x0f, AURA_GREEN, 5);
-			vTaskDelay(300*5/portTICK_PERIOD_MS);
-			ESP_LOGE(TAG, "aura2");
-			__r503_set_aura_led_config(r503_adder, LIGHT_ON, 0, color, 0);
-			ESP_LOGE(TAG, "continue \t|color: %X", color);
-			color++;
-			if(color > 0x07)
-				color = 0x01;
-			xQueueReset(intrQ);
+			case BUTTON_PIN:
+				ESP_LOGI(TAG, "ENROLL START");
+				vTaskDelay(100/portTICK_PERIOD_MS);
+				__r503_set_aura_led_config(r503_adder, BREATHING_LIGHT, 0x0f, AURA_CYAN, 0);
+				xQueueReset(intrQ);
+				button_flag = 0;
+				if(!xQueueReceive(intrQ, &flag, 5000/portTICK_PERIOD_MS)){	//wait 5s for finger
+					ESP_LOGE(TAG, "Failed to find finger");
+					break;	// break if no item in queue
+				}else{
+					if(flag != WAKEUP_PIN){
+						ESP_LOGE(TAG, "bad flag");
+						break;	// break out of routine if button pressed again
+					}
+				}
+				ESP_LOGE(TAG, "after Q");
+				// finger detected - scan and save to finger library
+				__r503_confirm_code ret = __r503_auto_enroll(r503_adder, 0x01, true, true, true, true);
+				if(ret == 0x00){
+					ESP_LOGI(TAG, "Registration Complete! \t|code: %X", ret);
+				}else{
+					ESP_LOGE(TAG, "Enroll fail \t|code: %X", ret);
+				}
+				__r503_set_aura_led_config(r503_adder, LIGHT_ON, 0, color, 0);
+				xQueueReset(intrQ);		// clear queue - multple interrupts during enroll
+				ESP_LOGW(TAG, "END OF ENROLL");
+				break;
+				
+			default:
+				ESP_LOGE(TAG, "Queue ERROR - bad value");
+				break;
+			}
 		}
 	}
 }
@@ -286,12 +345,12 @@ void main_task(void *params)
 
 void app_main() 
 {
-	static const char* TAG = "[APP_MAIN]";
+	static const char* TAG = "[APP_MAIN - SETTUP]";
 
 	esp_task_wdt_delete(NULL);
 	ESP_LOGI(TAG, "INIT START");
 
-	vTaskDelay(5000/portTICK_PERIOD_MS);
+	//vTaskDelay(5000/portTICK_PERIOD_MS);
 	r503_pin_init();
 	uart_init();
 
@@ -312,5 +371,6 @@ void app_main()
 	ESP_LOGI(TAG, "SETTING INTERRUPTS");
 	ESP_ERROR_CHECK(gpio_install_isr_service(0));
 	ESP_ERROR_CHECK(gpio_isr_handler_add(WAKEUP_PIN, wakeup_isr, (void*)WAKEUP_PIN));
+	ESP_ERROR_CHECK(gpio_isr_handler_add(BUTTON_PIN, wakeup_isr, (void*)BUTTON_PIN));
 	ESP_LOGW(TAG, "FINISHED");
 }

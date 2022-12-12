@@ -259,8 +259,73 @@ __r503_confirm_code r503_read_sys_param(uint32_t adder, r503_system_settings* se
 }
 
 /*
-__r503_confirm_code r503_read_template_num(uint32_t adder, uint16_t templN);
-__r503_confirm_code __r503_collect_finger_image(uint32_t adder);
+__r503_confirm_code r503_read_template_num(uint32_t adder, uint16_t templN);*/
+__r503_confirm_code __r503_collect_finger_image(uint32_t adder)
+{
+	return FUNCTION_NOT_IMPLEMENTED;
+}
+
+__r503_confirm_code __r503_collect_finger_image_EX(uint32_t adder)
+{
+	uint8_t data = 0x28;
+	__r503_uart_frame frame = r503_gen_frame(adder, PID_CMD, 0x03, &data);
+
+	if(__r503_write_frame(frame) != 12)
+		return FAIL_TO_WRITE;
+
+	if(__r503_read_frame(&frame) != 12)
+		return FAIL_TO_READ;
+
+	return data;
+}
+
+__r503_confirm_code __r503_auto_enroll(uint32_t adder, uint8_t modelID, uint8_t allow_cover_id, uint8_t allow_dup_finger, uint8_t return_critical, uint8_t finger_req_leave)
+{
+	uint8_t data[6] = {
+		0x31,
+		modelID,
+		allow_cover_id ? 0x1 : 0x0,
+		allow_dup_finger ? 0x1 : 0x0,
+		return_critical ? 0x1 : 0x0,
+		finger_req_leave ? 0x1 : 0x0
+	};
+
+	__r503_uart_frame frame = r503_gen_frame(adder, PID_CMD, 0x8, data);
+
+	if(__r503_write_frame(frame) != 17)
+		return FAIL_TO_WRITE;
+
+	for(uint8_t i = 0x01; i <= 0x0F;){
+		if(__r503_read_frame(&frame) != 14)
+			return FAIL_TO_READ;
+		if(data[1] != i)
+			return FAIL_TO_READ;
+
+		if(i%2 == 1 && i <= 0x12){	// finger collection
+			if(data[0] != 0x00)
+				return data[0];
+			continue;
+		}
+		if(i%2 == 0 && i <= 0x12){
+			if(data[0] != 0x00)
+				return data[0];
+
+		}
+		if(i > 0x12 && i < 0x0F){
+			if(data[0] != 0x00)
+				return FAIL_TO_READ;
+			continue;
+		}
+
+		if(i == 0x0F){
+			if(data[2] != modelID)
+				return FAIL_TO_ENROLL_FINGER;
+			return data[0];
+		}
+	}
+	return FAIL_TO_EXEC_CMD;
+}
+/*
 __r503_confirm_code __r503_upload_image(uint32_t adder, uint8_t* data, uint16_t* len);
 __r503_confirm_code r503_read_finger_image(uint32_t adder, uint8_t* data, uint16_t* len);
 __r503_confirm_code r503_write_finger_image(uint32_t adder, uint8_t* image, uint16_t len);
