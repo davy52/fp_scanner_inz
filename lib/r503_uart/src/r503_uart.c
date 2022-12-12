@@ -70,14 +70,16 @@ uint16_t __r503_gen_sum(__r503_uart_frame *frame)
 int __r503_check_sum(__r503_uart_frame frame)
 {
 	__r503_uart_frame newFrame = frame;
+	ESP_LOGE("[checksum]", "start");
 	if(__r503_gen_sum(&newFrame)){
 		return -1;
 	} 
 
+	ESP_LOGE("[checksum]", "if");
 	if(newFrame.sum == frame.sum){
 		return 0;
 	}
-
+	ESP_LOGE("[checksum]", "return");
 	return 1;
 
 }
@@ -281,6 +283,8 @@ __r503_confirm_code __r503_collect_finger_image_EX(uint32_t adder)
 
 __r503_confirm_code __r503_auto_enroll(uint32_t adder, uint8_t modelID, uint8_t allow_cover_id, uint8_t allow_dup_finger, uint8_t return_critical, uint8_t finger_req_leave)
 {
+
+	static const char* TAG = "[auto enroll f]";
 	uint8_t data[6] = {
 		0x31,
 		modelID,
@@ -292,14 +296,20 @@ __r503_confirm_code __r503_auto_enroll(uint32_t adder, uint8_t modelID, uint8_t 
 
 	__r503_uart_frame frame = r503_gen_frame(adder, PID_CMD, 0x8, data);
 
-	if(__r503_write_frame(frame) != 17)
+	if(__r503_write_frame(frame) != 17){
+		ESP_LOGE(TAG,"write fail");
 		return FAIL_TO_WRITE;
+	}
 
 	for(uint8_t i = 0x01; i <= 0x0F;){
-		if(__r503_read_frame(&frame) != 14)
+		if(__r503_read_frame(&frame) != 14){
+			ESP_LOGE(TAG, "fail to read 1");
 			return FAIL_TO_READ;
-		if(data[1] != i)
+		}
+		if(data[1] != i){
+			ESP_LOGE(TAG, "fail to read 2");
 			return FAIL_TO_READ;
+		}
 
 		if(i%2 == 1 && i <= 0x12){	// finger collection
 			if(data[0] != 0x00)
@@ -312,8 +322,10 @@ __r503_confirm_code __r503_auto_enroll(uint32_t adder, uint8_t modelID, uint8_t 
 
 		}
 		if(i > 0x12 && i < 0x0F){
-			if(data[0] != 0x00)
+			if(data[0] != 0x00){
+				ESP_LOGE(TAG, "fail to read \t|code: %X", data[0]);
 				return FAIL_TO_READ;
+			}
 			continue;
 		}
 
@@ -378,25 +390,33 @@ __r503_confirm_code __r503_soft_rst(uint32_t adder);*/
 
 __r503_confirm_code __r503_set_aura_led_config(uint32_t adder, __r503_aura_control_code controlCode, uint8_t speed, __r503_aura_color_index colorIndex, uint8_t nCycles){
 	uint8_t data[5] = {
-		0X35,
+		0x35,
 		controlCode,
 		speed,
 		colorIndex,
 		nCycles
 	};
+	ESP_LOGE("[AURA]", "genframe");
 	__r503_uart_frame frame = r503_gen_frame(adder, PID_CMD, 0x07, data);
 
+	ESP_LOGE("[AURA]", "writeframe");
 	if(__r503_write_frame(frame) < 0)
 		return FAIL_TO_WRITE;
 	
 	uint8_t data_rcv;
 	frame.data = &data_rcv;
+	frame.len = 3;
+	ESP_LOGE("[AURA]", "readframe");
 	if(__r503_read_frame(&frame) < 0)
 		return FAIL_TO_READ;
 
-	if(__r503_check_sum(frame))
+	ESP_LOGE("[AURA]", "check sum");
+	if(__r503_check_sum(frame)){
+		ESP_LOGW("[AURA]", "HELP");
 		return INCORRECT_RCV_SUM;
+	}
 	
+	ESP_LOGE("[AURA]", "return");
 	return data_rcv;
 }
 /*

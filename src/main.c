@@ -50,7 +50,7 @@ uart_config_t uart_config = {
 	.flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
 	.rx_flow_ctrl_thresh = 0,
 };
-const int uart_buffer_size = (1024 * 2);
+const int uart_buffer_size = (1024 * 4);
 QueueHandle_t uart_queue;
 
 void uart_init()
@@ -75,8 +75,23 @@ int __r503_write(uint8_t* data, uint16_t len)
  int __r503_read(uint8_t* data, uint16_t len)
  {
 	static const char* TAG= "[READ]";
-
-	int ret = uart_read_bytes(uart_num, data, len, READ_TIMEOUT/portTICK_PERIOD_MS);
+	int ret = 0;
+	ESP_LOGI(TAG, "len: %d", len);
+	ESP_LOGI(TAG, "data before: %X", data[0]);
+	do
+	{
+		ret = uart_read_bytes(uart_num, data, 1, READ_TIMEOUT/portTICK_PERIOD_MS);
+		if(ret <= 0){
+			ESP_LOGE(TAG, "bad return \t|ret: %d", ret);
+			continue;
+		}
+		ESP_LOGW(TAG, "garbage data: %X", data[0]);
+	} while (data[0] != R503_HEADER >> 8 && data[0] != 0x55);
+	
+	if(len > 1){
+		ret = uart_read_bytes(uart_num, data + 1, len - 1, READ_TIMEOUT/portTICK_PERIOD_MS);
+		ret++;
+	}
 	return ret;
  }
 // {
@@ -144,7 +159,7 @@ int r503_init(uint32_t adder)
 	}
 
 	vTaskDelay(500/portTICK_PERIOD_MS);
-	uart_flush_input(uart_num);	
+	//uart_flush_input(uart_num);	
 
 	ESP_LOGW(TAG, "Veryfying def passwd");
 	ret_code = r503_verify_pwd(R503_DEF_ADDER, R503_DEF_PWD);
@@ -276,6 +291,7 @@ static void IRAM_ATTR wakeup_isr(void *args)
 
 void main_task(void *params)
 {
+	vTaskDelay(3000/portTICK_PERIOD_MS);
 	static const char* TAG = "MAIN TASK";
 	esp_task_wdt_delete(NULL);
 	vTaskDelay(500/portTICK_PERIOD_MS);
@@ -366,7 +382,7 @@ void app_main()
 	ESP_LOGI(TAG, "INIT FINISHED");
 	ESP_LOGI(TAG, "Setting up MAIN TASK and ISR");
 
-	intrQ = xQueueCreate(10, sizeof(int));
+	intrQ = xQueueCreate(100, sizeof(int));
 	xTaskCreatePinnedToCore(main_task, "MAIN TASK", 4096, NULL, 10, NULL, tskNO_AFFINITY);
 
 	ESP_LOGI(TAG, "SETTING INTERRUPTS");
