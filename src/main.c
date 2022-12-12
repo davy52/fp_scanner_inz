@@ -294,10 +294,11 @@ void main_task(void *params)
 			case WAKEUP_PIN:
 				ESP_LOGI(TAG, "FINGER!!!");
 				
-				// ESP_LOGE(TAG, "aura");
+				ESP_LOGE(TAG, "aura");
 				__r503_set_aura_led_config(r503_adder, BREATHING_LIGHT, 0x0f, AURA_GREEN, 5);
+				ESP_LOGW(TAG, "after aura before delay");
 				vTaskDelay(300*5/portTICK_PERIOD_MS);
-				// ESP_LOGE(TAG, "aura2");
+				ESP_LOGE(TAG, "aura2");
 				__r503_set_aura_led_config(r503_adder, LIGHT_ON, 0, color, 0);
 				ESP_LOGE(TAG, "continue \t|color: %X", color);
 				color++;
