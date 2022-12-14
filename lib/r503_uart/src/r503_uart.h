@@ -498,6 +498,18 @@ __r503_confirm_code __r503_soft_rst(uint32_t adder);
 __r503_confirm_code __r503_set_aura_led_config(uint32_t adder, __r503_aura_control_code controlCode, uint8_t speed, __r503_aura_color_index colorIndex, uint8_t nCycles);
 
 /**
+ * @brief auto enroll finger to library
+ * 
+ * @param adder 
+ * @param location 
+ * @param dup_id 
+ * @param dup_fp 
+ * @param ret_crit_step 
+ * @param finger_leave 
+ * @return __r503_confirm_code 
+ */
+__r503_confirm_code __r503_auto_enroll(uint32_t adder, uint8_t location, uint8_t dup_id, uint8_t dup_fp, uint8_t ret_crit_step, uint8_t finger_leave);
+/**
  * @brief get random hardware generated number from module
  * 
  * @param adder module addres

@@ -334,6 +334,46 @@ __r503_confirm_code __r503_set_aura_led_config(uint32_t adder, __r503_aura_contr
 	
 	return data_rcv;
 }
+
+__r503_confirm_code __r503_auto_enroll(uint32_t adder, uint8_t location, uint8_t dup_id, uint8_t dup_fp, uint8_t ret_crit_step, uint8_t finger_leave)
+{
+	uint8_t data[6] = {
+		0x31,
+		location, 
+		dup_id, 
+		dup_fp,
+		ret_crit_step,
+		finger_leave
+	};
+
+	__r503_uart_frame frame = r503_gen_frame(adder, PID_CMD, 0x0008, data);
+
+	int ret = __r503_write_frame(frame);
+	if(ret <= 0)
+		return FAIL_TO_WRITE;
+
+	frame.len = 0x5;
+	for(int i = 0; i <= 0x0F; i++){
+		ret = __r503_read_frame(&frame);
+		if(ret != 14)
+		 	ESP_LOGE("[ENROLL]", "FAIL TO READ \t|read: %d", ret);
+			//return FAIL_TO_READ;
+
+		if(data[0] != 0){
+			ESP_LOGE("[ENROLL]", "other fail \t|code: %X", data[0]);
+			//return data[0];
+		}		
+
+		if(data[1] != i){
+			ESP_LOGE("[ENROLL]", "step misshap \t|code: %X", data[1]);
+			//return FAIL_TO_READ;
+		}
+	}
+
+	ESP_LOGI("[ENROLL]", "COMPLETE");
+	return data[0];
+}
+
 /*
 __r503_confirm_code __r503_get_random_number(uint32_t adder, uint32_t randNumber);
 __r503_confirm_code __r503_read_info_page(uint32_t adder, uint8_t* infoPage, uint16_t* len);

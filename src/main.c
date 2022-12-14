@@ -73,7 +73,7 @@ int __r503_read(uint8_t* data, uint16_t len)
 {
 	static const char* TAG = "[READ]";
 	//ESP_LOGI(TAG, "READ FRAME");
-	//ESP_LOGI(TAG, "data*: %p \tlen: %d", data, len);
+	ESP_LOGI(TAG, "data*: %p \tlen: %d", data, len);
 
 	int ret = uart_read_bytes(uart_num, data, len, READ_TIMEOUT/portTICK_PERIOD_MS);
 	// for(int i = 0; i < len; i++){
@@ -304,13 +304,18 @@ void app_main()
 
 
 	ESP_LOGI(TAG, "INIT FINISHED");
-	ESP_LOGI(TAG, "Setting up MAIN TASK and ISR");
+	
+	ESP_LOGW(TAG, "ENROLL TEST START");
 
-	intrQ = xQueueCreate(10, sizeof(int));
-	xTaskCreatePinnedToCore(main_task, "MAIN TASK", 4096, NULL, 10, NULL, tskNO_AFFINITY);
+	__r503_auto_enroll(r503_adder, 0, 0x01, 0x01, 0x01, 0x01);
 
-	ESP_LOGI(TAG, "SETTING INTERRUPTS");
-	ESP_ERROR_CHECK(gpio_install_isr_service(0));
-	ESP_ERROR_CHECK(gpio_isr_handler_add(WAKEUP_PIN, wakeup_isr, (void*)WAKEUP_PIN));
-	ESP_LOGW(TAG, "FINISHED");
+	// ESP_LOGI(TAG, "Setting up MAIN TASK and ISR");
+
+	// intrQ = xQueueCreate(10, sizeof(int));
+	// xTaskCreatePinnedToCore(main_task, "MAIN TASK", 4096, NULL, 10, NULL, tskNO_AFFINITY);
+
+	// ESP_LOGI(TAG, "SETTING INTERRUPTS");
+	// ESP_ERROR_CHECK(gpio_install_isr_service(0));
+	// ESP_ERROR_CHECK(gpio_isr_handler_add(WAKEUP_PIN, wakeup_isr, (void*)WAKEUP_PIN));
+	// ESP_LOGW(TAG, "FINISHED");
 }
