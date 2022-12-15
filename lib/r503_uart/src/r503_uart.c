@@ -353,7 +353,8 @@ __r503_confirm_code __r503_auto_enroll(uint32_t adder, uint8_t location, uint8_t
 		return FAIL_TO_WRITE;
 
 	frame.len = 0x5;
-	for(int i = 0; i <= 0x0F; i++){
+	for(int i = 1; i <= 0x0F; i++){
+		ESP_LOGW("[ENROLL]", "reading nr %d", i);
 		ret = __r503_read_frame(&frame);
 		if(ret != 14)
 		 	ESP_LOGE("[ENROLL]", "FAIL TO READ \t|read: %d", ret);

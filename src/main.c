@@ -11,6 +11,7 @@
 
 #include "driver/uart.h"
 
+#include <stdio.h>
 #include <string.h>
 
 #include "r503_uart.h"
@@ -47,7 +48,7 @@ uart_config_t uart_config = {
 	.flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
 	.rx_flow_ctrl_thresh = 0,
 };
-const int uart_buffer_size = (1024 * 2);
+const int uart_buffer_size = (1024 * 48);
 QueueHandle_t uart_queue;
 
 void uart_init()
@@ -72,14 +73,24 @@ int __r503_write(uint8_t* data, uint16_t len)
 int __r503_read(uint8_t* data, uint16_t len)
 {
 	static const char* TAG = "[READ]";
-	//ESP_LOGI(TAG, "READ FRAME");
-	ESP_LOGI(TAG, "data*: %p \tlen: %d", data, len);
+	int ret = 0;
+	do
+	{
+		ret = uart_read_bytes(uart_num, data, 1, READ_TIMEOUT/portTICK_PERIOD_MS);
+	} while (data[0] != (R503_HEADER >> 8) && data[0] != 0x55);
+	
+	if(len > 1)
+		ret = uart_read_bytes(uart_num, data + 1, len - 1, READ_TIMEOUT/portTICK_PERIOD_MS) + 1;
 
-	int ret = uart_read_bytes(uart_num, data, len, READ_TIMEOUT/portTICK_PERIOD_MS);
-	// for(int i = 0; i < len; i++){
-	// 	ESP_LOGI(TAG, "BYTE %d : \t%X", i, data[i]);
-	// }
-	// ESP_LOGI(TAG, "RET=%X", ret);
+	char str[len*6 + 1];
+	memset(str, '\0', sizeof(char) + (len*6 + 1));
+	for(int i = 0; i < len; i++){
+		static char str2[6];
+		sprintf(str2, "%2X ", data[i]);
+		strcat(str, str2);
+	}
+	ESP_LOGW(TAG, "DATA: %s", str);
+
 	return ret;
 }
 
