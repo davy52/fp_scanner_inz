@@ -3,6 +3,8 @@
 
 //test
 #include "esp_log.h"
+#include <string.h>
+#include <stdio.h>
 //test
 
 
@@ -36,15 +38,21 @@ int __r503_read_frame(__r503_uart_frame* frame)
 
 	uint8_t data_rcv[256] = {0};
 	int ret = __r503_read(data_rcv, 9 + frame->len);
-	
+	// ESP_LOGI("HERE", "1");
 	frame->header = data_rcv[0] << 8 | data_rcv[0];
+	// ESP_LOGI("HERE", "1");
 	frame->adder = data_rcv[2] << 24 | data_rcv[3] << 16 | data_rcv[4] << 8 | data_rcv[5];
+	// ESP_LOGI("HERE", "1");
 	frame->pid = data_rcv[6];
+	// ESP_LOGI("HERE", "1");
 	frame->len = data_rcv[7] << 8 | data_rcv[8];
+	// ESP_LOGI("HERE", "1");
 	for(int i = 0, j = 9; i < frame->len - 2; i++, j++){
 		frame->data[i] = data_rcv[j];
 	}
+	// ESP_LOGI("HERE", "1");
 	frame->sum = data_rcv[8+frame->len-1] << 8 | data_rcv[8+frame->len];
+	// ESP_LOGI("HERE", "1");
 	// memcpy(frame, data_rcv, 9);
 	// memcpy(frame->data, data_rcv, frame->len - 2);
 	// memcpy(&frame->sum, data_rcv + (9 + frame->len -2), 2);
@@ -353,22 +361,39 @@ __r503_confirm_code __r503_auto_enroll(uint32_t adder, uint8_t location, uint8_t
 		return FAIL_TO_WRITE;
 
 	frame.len = 0x5;
+	__r503_uart_frame frames[15] ={0};
+	uint8_t datas[15][3];
+	for (int i = 0; i < 15; i++){
+		frames[i].len = 0x5;
+		frames[i].data = &datas[15][0];
+	}
+
 	for(int i = 1; i <= 0x0F; i++){
 		ESP_LOGW("[ENROLL]", "reading nr %d", i);
-		ret = __r503_read_frame(&frame);
-		if(ret != 14)
-		 	ESP_LOGE("[ENROLL]", "FAIL TO READ \t|read: %d", ret);
-			//return FAIL_TO_READ;
+		ret = __r503_read_frame(&(frames[i - 1]));
+		// if(ret != 14)
+		//  	ESP_LOGE("[ENROLL]", "FAIL TO READ \t|read: %d", ret);
+		// 	//return FAIL_TO_READ;
 
-		if(data[0] != 0){
-			ESP_LOGE("[ENROLL]", "other fail \t|code: %X", data[0]);
-			//return data[0];
-		}		
+		// if(data[0] != 0){
+		// 	ESP_LOGE("[ENROLL]", "other fail \t|code: %X", data[0]);
+		// 	//return data[0];
+		// }		
 
-		if(data[1] != i){
-			ESP_LOGE("[ENROLL]", "step misshap \t|code: %X", data[1]);
-			//return FAIL_TO_READ;
+		// if(data[1] != i){
+		// 	ESP_LOGE("[ENROLL]", "step misshap \t|code: %X", data[1]);
+		// 	//return FAIL_TO_READ;
+		// }
+	}
+	for(int i = 1; i < 0xf; i++){
+		char str[14*6 + 2];
+		memset(str, '\0', sizeof(char) + (14*6 + 1));
+		for(int j = 0; j < 14; j++){
+			static char str2[6];
+			sprintf(str2, "%2X ", *(uint8_t*)(&frames[i]) + j);
+			strcat(str, str2);
 		}
+		ESP_LOGW("[rading]", "frame %d: %s", i, str);
 	}
 
 	ESP_LOGI("[ENROLL]", "COMPLETE");

@@ -72,6 +72,7 @@ int __r503_write(uint8_t* data, uint16_t len)
 
 int __r503_read(uint8_t* data, uint16_t len)
 {
+	// TODO: WIRTE TASK TO CLEAN UART INPUT
 	static const char* TAG = "[READ]";
 	int ret = 0;
 	do
@@ -82,14 +83,15 @@ int __r503_read(uint8_t* data, uint16_t len)
 	if(len > 1)
 		ret = uart_read_bytes(uart_num, data + 1, len - 1, READ_TIMEOUT/portTICK_PERIOD_MS) + 1;
 
-	char str[len*6 + 1];
-	memset(str, '\0', sizeof(char) + (len*6 + 1));
-	for(int i = 0; i < len; i++){
-		static char str2[6];
-		sprintf(str2, "%2X ", data[i]);
-		strcat(str, str2);
-	}
-	ESP_LOGW(TAG, "DATA: %s", str);
+	//ESP_LOGW(TAG, "READ COMPLETE");
+	// char str[len*6 + 1];
+	// memset(str, '\0', sizeof(char) + (len*6 + 1));
+	// for(int i = 0; i < len; i++){
+	// 	static char str2[6];
+	// 	sprintf(str2, "%2X ", data[i]);
+	// 	strcat(str, str2);
+	// }
+	// ESP_LOGW(TAG, "DATA: %s", str);
 
 	return ret;
 }
